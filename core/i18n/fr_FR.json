@@ -1,0 +1,10 @@
+{
+    "plugins\/nissan_leaf_connect\/plugin_info\/info.xml": {
+        "Plugin template pour la création de plugin": "Plugin template pour la création de plugin"
+    },
+    "plugins\/nissan_leaf_connect\/core\/class\/nissan_leaf_connect.class.php": {
+        "Etat de Charge": "Etat de Charge",
+        "Etat restant": "Etat restant"
+
+    }
+}
