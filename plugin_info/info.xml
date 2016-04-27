@@ -6,8 +6,9 @@
     <icon>fa fa-keyboard-o</icon>
     <licence>AGPL</licence>
     <author>cedric2</author>
-    <installation>https://github.com/cedric222/pycarwings2</installation>
+    <installation></installation>
     <require>2.0</require>
     <category>travel</category>
+    <hasDependency>1</hasDependency>
 </info>
 
