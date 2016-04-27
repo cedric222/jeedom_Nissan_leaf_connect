@@ -18,6 +18,7 @@
 
 /* * ***************************Includes********************************* */
 require_once dirname(__FILE__) . '/../../../../core/php/core.inc.php';
+require_once dirname(__FILE__) . '/../../3rdparty/nissan-connect-php/NissanConnect.class.php';
 
 class nissan_leaf_connect extends eqLogic {
     /*     * *************************Attributs****************************** */
@@ -25,76 +26,73 @@ class nissan_leaf_connect extends eqLogic {
 
 
     /*     * ***********************Methode static*************************** */
-      public static function cron30() {
-      }
-
       public static function cron5() {
-       log::add('nissan_leaf_connect', 'debug', 'cron2');
-       
-       $eqLogics = eqLogic::byType('nissan_leaf_connect');
-           foreach ($eqLogics as $eqLogic)
-                {
-                $request_shell = new com_shell('python /var/www/html/plugins/nissan_leaf_connect/ressources/nissan-leaf.py '.$eqLogic->getConfiguration('username').' '.$eqLogic->getConfiguration('password').' 2>&1');
-                log::add('nissan_leaf_connect', 'debug', 'Execution de : ' . $request_shell->getCmd());
-                $result = trim($request_shell->exec());
+          log::add('nissan_leaf_connect', 'debug', 'cron_chauf_on');
+          $eqLogics = eqLogic::byType('nissan_leaf_connect');
+             foreach ($eqLogics as $eqLogic) {
+                 $nissanConnect = new NissanConnect($eqLogic->getConfiguration('username'),
+                                                    $eqLogic->getConfiguration('password'),
+                                                    'Europe/Paris', 
+                                                    NissanConnect::COUNTRY_EU, 
+                                                    NissanConnect::ENCRYPTION_OPTION_MCRYPT);
 
-                $json = json_decode($result, TRUE);            
-                log::add('nissan_leaf_connect', 'debug', 'result : ' . $result);
+                 $nissanConnect->debug = True;
 
-                $cmd = $eqLogic->getCmd('info', 'BatteryCapacity');
- 		if (is_object($cmd)) {
-                         if ( isset ( $json["battery_status"]["batteryCapacity"] )) {
-                         	$cmd->setCollectDate('');
-                         	$cmd->event($json["battery_status"]["batteryCapacity"] );
-				}
-		}
-                $cmd = $eqLogic->getCmd('info', 'batteryDegradation');
- 		if (is_object($cmd)) {
-                         if ( isset ( $json["battery_status"]["batteryDegradation"] )) {
-                         	$cmd->setCollectDate('');
-                         	$cmd->event($json["battery_status"]["batteryDegradation"]);
-				}
-		}
-                $cmd = $eqLogic->getCmd('info', 'CruisingRangeAcOn');
- 		if (is_object($cmd)) {
-                         if ( isset ( $json["battery_status"]["cruisingRangeAcOn"]) ) {
-                         	$cmd->setCollectDate('');
-                         	$cmd->event(intval ($json["battery_status"]["cruisingRangeAcOn"] / 1000 ));
-				}
-		}
-                $cmd = $eqLogic->getCmd('info', 'CruisingRangeAcOff');
- 		if (is_object($cmd)) {
-                         if ( isset ( $json["battery_status"]["cruisingRangeAcOff"] )) {
-                         	$cmd->setCollectDate('');
-                         	$cmd->event(intval ($json["battery_status"]["cruisingRangeAcOff"] / 1000 ));
-				}
-		}
-                $cmd = $eqLogic->getCmd('info', 'BatteryRemainingAmount');
- 		if (is_object($cmd)) {
-                         if ( isset ( $json["leaf_info"]["BatteryStatusRecords"]["BatteryStatus"]["BatteryRemainingAmountWH"] )) {
-                         	$cmd->setCollectDate('');
-                         	$cmd->event($json["leaf_info"]["BatteryStatusRecords"]["BatteryStatus"]["BatteryRemainingAmountWH"]);
-				}
-		}
-                $cmd = $eqLogic->getCmd('info', 'BatteryChargingStatus');
- 		if (is_object($cmd)) {
-                         if ( isset ( $json["leaf_info"]["BatteryStatusRecords"]["BatteryStatus"]["BatteryChargingStatus"] )) {
-                         	$cmd->setCollectDate('');
-                         	$cmd->event($json["leaf_info"]["BatteryStatusRecords"]["BatteryStatus"]["BatteryChargingStatus"]);
-				}
-		}
-                $cmd = $eqLogic->getCmd('info', 'NotificationDateAndTime');
- 		if (is_object($cmd)) {
-                         if ( isset ( $json["leaf_info"]["BatteryStatusRecords"]["OperationDateAndTime"] )) {
-                         	$cmd->setCollectDate('');
-                         	$cmd->event($json["leaf_info"]["BatteryStatusRecords"]["OperationDateAndTime"]);
-				}
-		}
-	   }
-           log::add('nissan_leaf_connect', 'debug', 'cron end');
+                 $nissanConnect->maxWaitTime = 290;
+                 $result = $nissanConnect->getStatus();
+                 $debug_printr = print_r($result, true);
+                 log::add('nissan_leaf_connect', 'debug', 'after get2'.$debug_printr );
+                 $cmd = $eqLogic->getCmd('info', 'BatteryRemainingAmount');
+                 if (is_object($cmd)) {
+                     if ( isset ( $result->BatteryRemainingAmount )) {
+                     $cmd->setCollectDate('');
+                     $cmd->event($result->BatteryRemainingAmount );
+		     }   
+                 }
+                 $cmd = $eqLogic->getCmd('info', 'LastUpdated');
+                 if (is_object($cmd)) {
+                     if ( isset ( $result->LastUpdated )) {
+                         $cmd->setCollectDate('');
+                         $cmd->event($result->LastUpdated );
+		    }
+                 }
+                 $cmd = $eqLogic->getCmd('info', 'Charging');
+                 if (is_object($cmd)) {
+                     if ( isset ( $result->Charging )) {
+                         $cmd->setCollectDate('');
+                         $cmd->event($result->Charging );
+		     }
+                 }
+                 $cmd = $eqLogic->getCmd('info', 'CruisingRangeAcOn');
+                 if (is_object($cmd)) {
+                     if ( isset ( $result->CruisingRangeAcOn )) {
+                         $cmd->setCollectDate('');
+                         $cmd->event($result->CruisingRangeAcOn );
+		     }
+                 }
+                 $cmd = $eqLogic->getCmd('info', 'CruisingRangeAcOff');
+                 if (is_object($cmd)) {
+                     if ( isset ( $result->CruisingRangeAcOff )) {
+                         $cmd->setCollectDate('');
+                         $cmd->event($result->CruisingRangeAcOff );
+		     }
+                 }
+                 $cmd = $eqLogic->getCmd('info', 'PluggedIn');
+                 if (is_object($cmd)) {
+                     if ( isset ( $result->PluggedIn )) {
+                         $cmd->setCollectDate('');
+                         $cmd->event($result->PluggedIn );
+		         }
+                 }
+                 $cmd = $eqLogic->getCmd('info', 'BatteryRemainingAmountWH');
+                 if (is_object($cmd)) {
+                     if ( isset ( $result->BatteryRemainingAmountWH )) {
+                         $cmd->setCollectDate('');
+                         $cmd->event($result->BatteryRemainingAmountWH );
+		         }
+                 }
+          } # end for eqLogic
       }
-     
-
 
 /*      public static function cronHourly() {
 	
@@ -163,28 +161,48 @@ class nissan_leaf_connect extends eqLogic {
       $new_cmd->setType('action');
       $new_cmd->save();
       
-      $new_cmd = $this->getCmd(null, 'BatteryCapacity');
+      $new_cmd = $this->getCmd(null, 'PluggedIn');
       if (!is_object($new_cmd)) {
              $new_cmd = new nissan_leaf_connectCmd();
              }
-      $new_cmd->setName(__('Capacité', __FILE__));
-      $new_cmd->setLogicalId('BatteryCapacity');
+      $new_cmd->setName(__('Cable', __FILE__));
+      $new_cmd->setLogicalId('PluggedIn');
       $new_cmd->setEqLogic_id($this->getId());
-      $new_cmd->setUnite('kWH');
       $new_cmd->setType('info');
-      $new_cmd->setSubType('numeric');
+      $new_cmd->setSubType('binary');
       $new_cmd->save();
       
-      $new_cmd = $this->getCmd(null, 'batteryDegradation');
+      $new_cmd = $this->getCmd(null, 'ChargingMode');
       if (!is_object($new_cmd)) {
              $new_cmd = new nissan_leaf_connectCmd();
              }
-      $new_cmd->setName(__('Batterie', __FILE__));
-      $new_cmd->setLogicalId('batteryDegradation');
+      $new_cmd->setName(__('Mode Charge', __FILE__));
+      $new_cmd->setLogicalId('ChargingMode');
       $new_cmd->setEqLogic_id($this->getId());
-      $new_cmd->setUnite('kWH');
       $new_cmd->setType('info');
-      $new_cmd->setSubType('numeric');
+      $new_cmd->setSubType('string');
+      $new_cmd->save();
+      
+      $new_cmd = $this->getCmd(null, 'Charging');
+      if (!is_object($new_cmd)) {
+             $new_cmd = new nissan_leaf_connectCmd();
+             }
+      $new_cmd->setName(__('En Charge', __FILE__));
+      $new_cmd->setLogicalId('Charging');
+      $new_cmd->setEqLogic_id($this->getId());
+      $new_cmd->setType('info');
+      $new_cmd->setSubType('binary');
+      $new_cmd->save();
+      
+      $new_cmd = $this->getCmd(null, 'RemoteACRunning');
+      if (!is_object($new_cmd)) {
+             $new_cmd = new nissan_leaf_connectCmd();
+             }
+      $new_cmd->setName(__('Chauffage', __FILE__));
+      $new_cmd->setLogicalId('RemoteACRunning');
+      $new_cmd->setEqLogic_id($this->getId());
+      $new_cmd->setType('info');
+      $new_cmd->setSubType('binary');
       $new_cmd->save();
       
       $new_cmd = $this->getCmd(null, 'CruisingRangeAcOn');
@@ -215,8 +233,32 @@ class nissan_leaf_connect extends eqLogic {
       if (!is_object($new_cmd)) {
              $new_cmd = new nissan_leaf_connectCmd();
              }
-      $new_cmd->setName(__('Etat restant', __FILE__));
+      $new_cmd->setName(__('Charge Restante', __FILE__));
       $new_cmd->setLogicalId('BatteryRemainingAmount');
+      $new_cmd->setEqLogic_id($this->getId());
+      $new_cmd->setUnite('kWH');
+      $new_cmd->setType('info');
+      $new_cmd->setSubType('numeric');
+      $new_cmd->save();
+
+      $new_cmd = $this->getCmd(null, 'BatteryRemainingAmountWH');
+      if (!is_object($new_cmd)) {
+             $new_cmd = new nissan_leaf_connectCmd();
+             }
+      $new_cmd->setName(__('Capacité WH', __FILE__));
+      $new_cmd->setLogicalId('BatteryRemainingAmountWH');
+      $new_cmd->setEqLogic_id($this->getId());
+      $new_cmd->setUnite('kWH');
+      $new_cmd->setType('info');
+      $new_cmd->setSubType('numeric');
+      $new_cmd->save();
+
+      $new_cmd = $this->getCmd(null, 'BatteryCapacity');
+      if (!is_object($new_cmd)) {
+             $new_cmd = new nissan_leaf_connectCmd();
+             }
+      $new_cmd->setName(__('Capacité', __FILE__));
+      $new_cmd->setLogicalId('BatteryCapacity');
       $new_cmd->setEqLogic_id($this->getId());
       $new_cmd->setUnite('kWH');
       $new_cmd->setType('info');
@@ -234,12 +276,12 @@ class nissan_leaf_connect extends eqLogic {
       $new_cmd->setSubType('string');
       $new_cmd->save();
       
-      $new_cmd = $this->getCmd(null, 'NotificationDateAndTime');
+      $new_cmd = $this->getCmd(null, 'LastUpdated');
       if (!is_object($new_cmd)) {
              $new_cmd = new nissan_leaf_connectCmd();
              }
       $new_cmd->setName(__('Mise a jour', __FILE__));
-      $new_cmd->setLogicalId('NotificationDateAndTime');
+      $new_cmd->setLogicalId('LastUpdated');
       $new_cmd->setEqLogic_id($this->getId());
       $new_cmd->setType('info');
       $new_cmd->setSubType('string');
