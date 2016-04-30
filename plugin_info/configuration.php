@@ -25,10 +25,6 @@ if (!isConnect()) {
 <form class="form-horizontal">
     <fieldset>
         <div class="form-group">
-            <label class="col-lg-4 control-label">NOT IN USE</label>
-            <div class="col-lg-2">
-                <input class="configKey form-control" data-l1key="param1" />
-            </div>
         </div>
   </fieldset>
 </form>
