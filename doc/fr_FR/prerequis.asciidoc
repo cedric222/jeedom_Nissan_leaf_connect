@@ -1,0 +1,1 @@
+Il n'y a besoin que de php mcrypt, qui devrait être installer par l'installation des dépendances
