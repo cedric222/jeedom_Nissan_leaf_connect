@@ -1,4 +1,4 @@
-<?xml version="1.1" encoding="UTF-8"?>
+<?xml version="1.0" encoding="UTF-8"?>
 <info>
     <id>nissan_leaf_connect</id>
     <name>Nissan Leaf Connect</name>
@@ -8,6 +8,7 @@
     <author>cedric2</author>
     <installation></installation>
     <require>2.0</require>
+    <version>1.1</version>
     <category>communication</category>
     <hasDependency>1</hasDependency>
 </info>
