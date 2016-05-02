@@ -225,7 +225,7 @@ class NissanConnect {
     }
     
     private function _checkStatusResult($response, $what) {
-        $allowed_op_result = array('START', 'START_BATTERY', 'FINISH');
+        $allowed_op_result = array('START', 'START_BATTERY', 'FINISH'); #'ELECTRIC_WAVE_ABNORMAL');
         if (empty($response->{$what})) {
             throw new Exception("Missing '$what' in response received in call to '{$what}Request.php': " . json_encode($response), static::ERROR_CODE_INVALID_RESPONSE);
         }
@@ -284,6 +284,10 @@ class NissanConnect {
         if (isset($result->VehicleInfoList->vehicleInfo[0]->custom_sessionid)) {
             $this->config->customSessionID = $result->VehicleInfoList->vehicleInfo[0]->custom_sessionid;
         }
+        #some leaf need that !
+        if (isset($result->vehicleInfo[0]->custom_sessionid)) {
+            $this->config->customSessionID = $result->vehicleInfo[0]->custom_sessionid;
+        }
         if (isset($result->CustomerInfo->VehicleInfo->VIN)) {
             $this->config->vin = $result->CustomerInfo->VehicleInfo->VIN;
         }
@@ -300,6 +304,19 @@ class NissanConnect {
      * @return stdClass JSON-decoded response from API.
      * @throws Exception
      */
+    private function remove_personnal_info($params) {
+    	if (isset($params['VIN'])) {
+		$params['VIN'] = "VIM_REMOVED";
+                }
+    	if (isset($params['Password'])) {
+		$params['Password'] = "Password_removed";
+                }
+    	if (isset($params['UserId'])) {
+		$params['UserId'] = "userid_removed";
+                }
+        return $params;
+        }
+	
     private function sendRequest($path, $params = array()) {
         $params['custom_sessionid'] = $this->config->customSessionID;
         $params['initial_app_strings'] = $this->config->initialAppStrings;
@@ -310,8 +327,10 @@ class NissanConnect {
         $params['tz'] = $this->config->tz;
 
         $url = $this->baseURL . $path;
+        
 
-        $this->debug("Request: POST $url " . json_encode($params));
+        $this->debug("Request_remove: POST $url " . json_encode($this->remove_personnal_info($params)));
+        
 
         $ch = curl_init($url);
         curl_setopt($ch, CURLOPT_POSTFIELDS, TRUE);
