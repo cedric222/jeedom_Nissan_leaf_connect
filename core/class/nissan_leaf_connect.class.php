@@ -457,7 +457,11 @@ class nissan_leaf_connect extends eqLogic {
 
       }
      */
-
+      #public function toHtml($_version = 'dashboard') {
+     # 
+     # return $this ;
+     # }
+     # 
 }
 
 class nissan_leaf_connectCmd extends cmd {
@@ -525,11 +529,6 @@ class nissan_leaf_connectCmd extends cmd {
              log::add('nissan_leaf_connect', 'debug', 'stop clim done ');
 	 }
      }
-      #public function toHtml($_version = 'dashboard') {
-      #$replace = $this->preToHtml($_version);
-      #if (!is_array($replace)) {
-      #   return $replace;
-      #}
 
     #}
    }
