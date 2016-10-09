@@ -7,9 +7,9 @@
     <licence>AGPL</licence>
     <author>cedric2</author>
     <installation></installation>
-    <require>2.0</require>
-    <version>1.4</version>
-    <category>communication</category>
+    <require>2.3.17</require>
+    <version>1.5</version>
+    <category>devicecommunication</category>
     <hasDependency>1</hasDependency>
 </info>
 
