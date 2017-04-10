@@ -44,7 +44,7 @@ class nissan_leaf_connect extends eqLogic {
                                                     $eqLogic->getConfiguration('password'),
                                                     'Europe/Paris', 
                                                     NissanConnect::COUNTRY_EU, 
-                                                    NissanConnect::ENCRYPTION_OPTION_MCRYPT);
+                                                    NissanConnect::ENCRYPTION_OPTION_OPENSSL);
 
                  $nissanConnect->debug = True;
 
@@ -565,7 +565,7 @@ class nissan_leaf_connectCmd extends cmd {
                                                 $eqLogic->getConfiguration('password'),
                                                 'Europe/Paris',
                                                 NissanConnect::COUNTRY_EU,
-                                                NissanConnect::ENCRYPTION_OPTION_MCRYPT);
+                                                NissanConnect::ENCRYPTION_OPTION_OPENSSL);
 
              $nissanConnect->debug = True;
              $nissanConnect->maxWaitTime = 290;
@@ -581,7 +581,7 @@ class nissan_leaf_connectCmd extends cmd {
                                                 $eqLogic->getConfiguration('password'),
                                                 'Europe/Paris',
                                                 NissanConnect::COUNTRY_EU,
-                                                NissanConnect::ENCRYPTION_OPTION_MCRYPT);
+                                                NissanConnect::ENCRYPTION_OPTION_OPENSSL);
 
              $nissanConnect->debug = True;
              $nissanConnect->maxWaitTime = 290;
@@ -597,7 +597,7 @@ class nissan_leaf_connectCmd extends cmd {
                                                 $eqLogic->getConfiguration('password'),
                                                 'Europe/Paris',
                                                 NissanConnect::COUNTRY_EU,
-                                                NissanConnect::ENCRYPTION_OPTION_MCRYPT);
+                                                NissanConnect::ENCRYPTION_OPTION_OPENSSL);
 
              $nissanConnect->debug = True;
              $nissanConnect->maxWaitTime = 290;
