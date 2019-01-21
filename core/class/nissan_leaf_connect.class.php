@@ -577,6 +577,9 @@ class nissan_leaf_connectCmd extends cmd {
 	 }
          elseif ( $this->getLogicalId() == 'startClimateControl') {
              $eqLogic = $this->getEqLogic();
+             $cmd = $eqLogic->getCmd(null, 'RemoteACRunning');
+             $cmd->setCollectDate('');
+             $cmd->event(1);
              $nissanConnect = new NissanConnect($eqLogic->getConfiguration('username'),
                                                 $eqLogic->getConfiguration('password'),
                                                 'Europe/Paris',
@@ -586,13 +589,13 @@ class nissan_leaf_connectCmd extends cmd {
              $nissanConnect->debug = True;
              $nissanConnect->maxWaitTime = 290;
              $nissanConnect->startClimateControl();
-             $cmd = $eqLogic->getCmd(null, 'RemoteACRunning');
-             $cmd->setCollectDate('');
-             $cmd->event(1);
              log::add('nissan_leaf_connect', 'debug', 'start clim done ');
 	 }
          elseif ( $this->getLogicalId() == 'stopClimateControl') {
              $eqLogic = $this->getEqLogic();
+             $cmd = $eqLogic->getCmd(null, 'RemoteACRunning');
+             $cmd->setCollectDate('');
+             $cmd->event(0);
              $nissanConnect = new NissanConnect($eqLogic->getConfiguration('username'),
                                                 $eqLogic->getConfiguration('password'),
                                                 'Europe/Paris',
@@ -602,9 +605,6 @@ class nissan_leaf_connectCmd extends cmd {
              $nissanConnect->debug = True;
              $nissanConnect->maxWaitTime = 290;
              $nissanConnect->stopClimateControl();
-             $cmd = $eqLogic->getCmd(null, 'RemoteACRunning');
-             $cmd->setCollectDate('');
-             $cmd->event(0);
              log::add('nissan_leaf_connect', 'debug', 'stop clim done ');
 	 }
      }
