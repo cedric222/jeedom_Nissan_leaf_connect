@@ -23,6 +23,8 @@ class NissanConnect {
     const COUNTRY_CANADA = 'NCI';
     const COUNTRY_US = 'NNA';
     const COUNTRY_EU = 'NE';
+    const COUNTRY_AUSTRALIA = 'NMA';
+    const COUNTRY_JAPAN = 'NML';
 
     /* Those error code will be used in Exception that can be thrown when errors occur. */
     const ERROR_CODE_MISSING_RESULTKEY = 400;
@@ -44,7 +46,16 @@ class NissanConnect {
     /* @var boolean Enable to echo debugging information into the PHP error log. */
     public $debug = FALSE;
 
-    private $baseURL = 'https://gdcportalgw.its-mo.com/gworchest_160803A/gdc/';
+    # The API URL is changed occasionally when Nissan introduce a new version.
+
+    # When the API changes, it's worth taking a look at other sources, such as:
+    # https://github.com/filcole/pycarwings2/issues/
+    # https://github.com/jdhorne/pycarwings2/issues/
+
+    private $baseURL = 'https://gdcportalgw.its-mo.com/gworchest_160803EC/gdc/';  # No longer works for some, but works in Sweden. Tweaks were needed to make it work after 2018-12-25
+    # private $baseURL = 'https://gdcportalgw.its-mo.com/api_v181217_NE/gdc/';    # New December 2018, but doesn't seem to work, gives {"status":408}
+    # private $baseURL = 'https://gdcportalgw.its-mo.com/api_v180117_NE/gdc/';    # New from Summer 2018? Not working as of Jan 2019, 404
+    # private $baseURL = 'https://gdcportalgw.its-mo.com/gworchest_160803A/gdc/'; # Stopped working summer 2018
 
     private $resultKey = NULL;
     private $config = NULL;
@@ -74,6 +85,7 @@ class NissanConnect {
         $this->config->basePRM = 'uyI5Dj9g8VCOFDnBRUbr3g'; // Will be overwritten with the response from the InitialApp.php call
         $this->config->customSessionID = ''; // Empty until login completes
         $this->config->encryptionOption = $encryptionOption;
+        date_default_timezone_set($tz);
     }
 
     /**
@@ -123,6 +135,46 @@ class NissanConnect {
         $result = $this->sendRequest('BatteryRemoteChargingRequest.php');
         return $result;
     }
+    /**
+     * Get driving history for the specified date
+     *
+     * @param date $targetDate Specify date to request information for
+     *
+     * @return stdClass
+     * @throws Exception
+     */
+    public function getHistory($targetDate=null) {
+        $this->prepare();
+        $result = $this->sendRequest('CarKarteDetailInfoRequest.php', array('TargetDate' => $targetDate));
+        return $result;
+    }
+
+    /*
+     * Get current location
+     * @return stdClass
+     * @throws Exception
+
+     * POST https://gdcportalgw.its-mo.com/gworchest_160803EC/gdc/MyCarFinderRequest.php HTTP/1.1
+     * Eiter wait until success, or keep requesting:
+     * POST https://gdcportalgw.its-mo.com/gworchest_160803EC/gdc/MyCarFinderResultRequest.php HTTP/1.1
+     */
+    public function getLocation() {
+      $result = $this->sendRequest('MyCarFinderRequest.php');
+      return $this->waitUntilSuccess('MyCarFinderResultRequest.php');
+    }
+
+    /**
+     * Get the last known location
+     *
+     * @return stdClass
+     * @throws Exception
+     */
+    public function lastLocation() {
+        $this->prepare();
+        $result = $this->sendRequest('MyCarFinderLatLng.php');
+        return $result;
+    }
+
 
     /**
      * Get battery & climate control status.
@@ -134,22 +186,40 @@ class NissanConnect {
      */
     public function getStatus($option = 0) {
         $this->prepare();
+
         if ($option != static::STATUS_QUERY_OPTION_CACHED) {
             $this->sendRequest('BatteryStatusCheckRequest.php');
-            if ($option != static::STATUS_QUERY_OPTION_ASYNC) {
-                $this->waitUntilSuccess('BatteryStatusCheckResultRequest.php');
-            }
+            $expected_last_updated_date = time();
+            $this->debug("Expected last updated date: " . date("Y-m-d H:i:s", $expected_last_updated_date));
         }
         if ($option == static::STATUS_QUERY_OPTION_ASYNC) {
             return NULL;
         }
 
-        $response = $this->sendRequest('BatteryStatusRecordsRequest.php');
-        $this->_checkStatusResult($response, 'BatteryStatusRecords');
+        // Make sure the response from BatteryStatusRecordsRequest.php was updated
+        $start = time();
+        while (TRUE) {
+            $response = $this->sendRequest('BatteryStatusRecordsRequest.php');
+            $this->_checkStatusResult($response, 'BatteryStatusRecords');
+
+            if (empty($expected_last_updated_date)) {
+                break;
+            }
+            $this->debug("Last Updated date received: " . date("Y-m-d H:i:s", strtotime($response->BatteryStatusRecords->OperationDateAndTime)));
+            $time_diff = abs($expected_last_updated_date - strtotime($response->BatteryStatusRecords->OperationDateAndTime));
+            $this->debug("  Last Updated Date: Received minus Expected = $time_diff seconds");
+            if ($time_diff > 120 && time() - $start < 60) {
+                sleep(5);
+                continue;
+            }
+            break;
+        }
 
         $response2 = $this->sendRequest('RemoteACRecordsRequest.php', array('TimeFrom' => gmdate('Y-m-d\TH:i:s', strtotime($this->config->UserVehicleBoundTime))));
 
         $result = new stdClass();
+
+        $result->status = $response2->status;
 
         $result->LastUpdated = date('Y-m-d H:i', strtotime($response->BatteryStatusRecords->OperationDateAndTime));
 
@@ -203,7 +273,7 @@ class NissanConnect {
             $result->CruisingRangeAcOn = NULL;
             $result->CruisingRangeUnit = NULL;
             $result->CruisingRangeUnit = '---';
-        } elseif ($this->config->country == 'US') {
+        } elseif ($this->config->country == NissanConnect::COUNTRY_US) {
             $result->CruisingRangeAcOn = $response->BatteryStatusRecords->CruisingRangeAcOn * 0.000621371192;
             $result->CruisingRangeAcOff = $response->BatteryStatusRecords->CruisingRangeAcOff * 0.000621371192;
             $result->CruisingRangeUnit = 'miles';
@@ -262,7 +332,7 @@ class NissanConnect {
     private function prepare($skip_local_file = FALSE) {
         if (empty($this->config->vin) || empty($this->config->dcmID) || empty($this->config->customSessionID) || empty($this->config->UserVehicleBoundTime)) {
             $uid = md5($this->config->username);
-            $local_storage_file = "/tmp/.nissan-connect-storage-$uid.json";
+            $local_storage_file = sys_get_temp_dir() . "/.nissan-connect-storage-$uid.json";
             if (file_exists($local_storage_file) && !$skip_local_file) {
                 $json = @json_decode(file_get_contents($local_storage_file));
                 $this->config->vin = @$json->vin;
@@ -413,7 +483,7 @@ class NissanConnect {
         if ($this->debug) {
             $date = date('Y-m-d H:i:s');
             error_log("[$date] [NissanConnect] $log");
-            log::add('nissan_leaf_connect', 'debug', "[NissanConnect] $log");
+	    log::add('nissan_leaf_connect', 'debug', "[NissanConnect] $log");
         }
     }
 
