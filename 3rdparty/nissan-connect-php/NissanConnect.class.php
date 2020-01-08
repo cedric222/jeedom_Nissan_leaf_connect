@@ -47,15 +47,16 @@ class NissanConnect {
     public $debug = FALSE;
 
     # The API URL is changed occasionally when Nissan introduce a new version.
-
     # When the API changes, it's worth taking a look at other sources, such as:
     # https://github.com/filcole/pycarwings2/issues/
     # https://github.com/jdhorne/pycarwings2/issues/
-
-    private $baseURL = 'https://gdcportalgw.its-mo.com/gworchest_160803EC/gdc/';  # No longer works for some, but works in Sweden. Tweaks were needed to make it work after 2018-12-25
+    # https://gitlab.com/tobiaswkjeldsen/dartcarwings
+    # private $baseURL = 'https://gdcportalgw.its-mo.com/gworchest_160803EC/gdc/';  # No longer works for some, but works in Sweden. Tweaks were needed to make it work after 2018-12-25
     # private $baseURL = 'https://gdcportalgw.its-mo.com/api_v181217_NE/gdc/';    # New December 2018, but doesn't seem to work, gives {"status":408}
     # private $baseURL = 'https://gdcportalgw.its-mo.com/api_v180117_NE/gdc/';    # New from Summer 2018? Not working as of Jan 2019, 404
     # private $baseURL = 'https://gdcportalgw.its-mo.com/gworchest_160803A/gdc/'; # Stopped working summer 2018
+    private $baseURL = 'https://gdcportalgw.its-mo.com/api_v190426_NE/gdc/';
+
 
     private $resultKey = NULL;
     private $config = NULL;
