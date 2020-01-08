@@ -40,6 +40,10 @@ class NissanConnect {
     const ENCRYPTION_OPTION_OPENSSL    = 0;
     const ENCRYPTION_OPTION_WEBSERVICE = 1;
 
+    const SECONDS_LIMIT_TO_CONSIDER_DATA_AS_FRESH = 120;
+    const SECONDS_LIMIT_FOR_RETRYING_REQUESTS = 120;
+    const SECONDS_BETWEEN_RETRIES = 5;
+
     /* @var int How long should we wait, before throwing an exception, when waiting for the car to execute a command. @see $waitForResult parameter in the various function calls. */
     public $maxWaitTime = 290;
 
@@ -47,16 +51,17 @@ class NissanConnect {
     public $debug = FALSE;
 
     # The API URL is changed occasionally when Nissan introduce a new version.
+
     # When the API changes, it's worth taking a look at other sources, such as:
     # https://github.com/filcole/pycarwings2/issues/
     # https://github.com/jdhorne/pycarwings2/issues/
     # https://gitlab.com/tobiaswkjeldsen/dartcarwings
+
     # private $baseURL = 'https://gdcportalgw.its-mo.com/gworchest_160803EC/gdc/';  # No longer works for some, but works in Sweden. Tweaks were needed to make it work after 2018-12-25
     # private $baseURL = 'https://gdcportalgw.its-mo.com/api_v181217_NE/gdc/';    # New December 2018, but doesn't seem to work, gives {"status":408}
     # private $baseURL = 'https://gdcportalgw.its-mo.com/api_v180117_NE/gdc/';    # New from Summer 2018? Not working as of Jan 2019, 404
     # private $baseURL = 'https://gdcportalgw.its-mo.com/gworchest_160803A/gdc/'; # Stopped working summer 2018
     private $baseURL = 'https://gdcportalgw.its-mo.com/api_v190426_NE/gdc/';
-
 
     private $resultKey = NULL;
     private $config = NULL;
@@ -82,8 +87,8 @@ class NissanConnect {
         $this->config->vin = '';
         $this->config->dcmID = '';
         $this->config->UserVehicleBoundTime = '';
-        $this->config->initialAppStrings = 'geORNtsZe5I4lRGjG9GZiA'; // Hard-coded in mobile apps?
-        $this->config->basePRM = 'uyI5Dj9g8VCOFDnBRUbr3g'; // Will be overwritten with the response from the InitialApp.php call
+        $this->config->initialAppStrings = '9s5rfKVuMrT03RtzajWNcA'; // Hard-coded in mobile apps?
+        $this->config->basePRM = 'uyI5Dj9g8VCOFDnBRUbr3g'; // Will be overwritten with the response from the InitialApp_v2.php call
         $this->config->customSessionID = ''; // Empty until login completes
         $this->config->encryptionOption = $encryptionOption;
         date_default_timezone_set($tz);
@@ -209,9 +214,14 @@ class NissanConnect {
             $this->debug("Last Updated date received: " . date("Y-m-d H:i:s", strtotime($response->BatteryStatusRecords->OperationDateAndTime)));
             $time_diff = abs($expected_last_updated_date - strtotime($response->BatteryStatusRecords->OperationDateAndTime));
             $this->debug("  Last Updated Date: Received minus Expected = $time_diff seconds");
-            if ($time_diff > 120 && time() - $start < 60) {
-                sleep(5);
+            if ($time_diff < static::SECONDS_LIMIT_TO_CONSIDER_DATA_AS_FRESH) {
+              $this->debug("  Got freshly updated data in API response");
+            } elseif (time() - $start < static::SECONDS_LIMIT_FOR_RETRYING_REQUESTS) {
+                $this->debug("  Haven't yet got fresh data from the API, trying again in " . static::SECONDS_BETWEEN_RETRIES . " seconds...");
+                sleep(static::SECONDS_BETWEEN_RETRIES);
                 continue;
+            } else {
+                $this->debug("  Reached time limit of " . static::SECONDS_LIMIT_FOR_RETRYING_REQUESTS . " seconds, giving up waiting for updated data from API");
             }
             break;
         }
@@ -333,7 +343,15 @@ class NissanConnect {
     private function prepare($skip_local_file = FALSE) {
         if (empty($this->config->vin) || empty($this->config->dcmID) || empty($this->config->customSessionID) || empty($this->config->UserVehicleBoundTime)) {
             $uid = md5($this->config->username);
-            $local_storage_file = sys_get_temp_dir() . "/.nissan-connect-storage-$uid.json";
+            # Use the posix function if available. This requires php-posix or php-process package
+            $unixuser = function_exists('posix_geteuid') ? posix_getpwuid(posix_geteuid())['name'] : get_current_user();
+            $local_storage_file = sys_get_temp_dir() . "/.nissan-connect-storage-$uid-$unixuser.json";
+
+            $local_storage_file_old = sys_get_temp_dir() . "/.nissan-connect-storage-$uid.json";
+            if (!file_exists($local_storage_file) && file_exists($local_storage_file_old)) {
+                rename($local_storage_file_old, $local_storage_file);
+            }
+
             if (file_exists($local_storage_file) && !$skip_local_file) {
                 $json = @json_decode(file_get_contents($local_storage_file));
                 $this->config->vin = @$json->vin;
@@ -358,9 +376,9 @@ class NissanConnect {
      * @throws Exception
      */
     private function login() {
-        $result = $this->sendRequest('InitialApp.php');
+        $result = $this->sendRequest('InitialApp_v2.php');
         if (empty($result->baseprm)) {
-            throw new Exception("Failed to get 'baseprm' using InitialApp.php. Response: " . json_encode($result), static::ERROR_CODE_LOGIN_FAILED);
+            throw new Exception("Failed to get 'baseprm' using InitialApp_v2.php. Response: " . json_encode($result), static::ERROR_CODE_LOGIN_FAILED);
         }
         $this->config->basePRM = $result->baseprm;
 
@@ -398,8 +416,8 @@ class NissanConnect {
      * @throws Exception
      */
     private function sendRequest($path, $params = array()) {
-        $params['custom_sessionid'] = $this->config->customSessionID;
-        $params['initial_app_strings'] = $this->config->initialAppStrings;
+        $params['custom_sessionid'] = empty($this->config->customSessionID) ? '' : $this->config->customSessionID;
+        $params['initial_app_str'] = $this->config->initialAppStrings;
         $params['RegionCode'] = $this->config->country;
         $params['lg'] = 'en-US';
         $params['DCMID'] = $this->config->dcmID;
@@ -429,7 +447,7 @@ class NissanConnect {
                 $this->debug("Found resultKey in response: $this->resultKey");
             }
             if ($json->status !== 200) {
-                if (($json->status == 401 || $json->status == 404) && $this->shouldRetry) {
+                if (($json->status == 401 || $json->status == 404 || $json->status == 408 || $json->status < 0) && $this->shouldRetry) {
                     $this->debug("Request for '$path' failed. Response received: " . json_encode($json) . " Will retry.");
                     $this->shouldRetry = FALSE; // Don't loop infinitely!
                     $this->config->customSessionID = NULL;
@@ -484,7 +502,7 @@ class NissanConnect {
         if ($this->debug) {
             $date = date('Y-m-d H:i:s');
             error_log("[$date] [NissanConnect] $log");
-	    log::add('nissan_leaf_connect', 'debug', "[NissanConnect] $log");
+            log::add('nissan_leaf_connect', 'debug', "[NissanConnect] $log");
         }
     }
 
@@ -500,3 +518,4 @@ class NissanConnect {
         return base64_encode($encrypted_password);
     }
 }
+
